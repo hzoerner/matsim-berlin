@@ -1,40 +1,34 @@
-package org.matsim.kudamm_2030;
+package org.matsim.spnv;
 
-import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
-import org.matsim.api.core.v01.TransportMode;
-import org.matsim.api.core.v01.network.Link;
-import org.matsim.api.core.v01.network.Network;
-import org.matsim.api.core.v01.network.NetworkFactory;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
 import org.matsim.core.config.groups.PlansCalcRouteConfigGroup;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.utils.objectattributes.attributable.Attributes;
+import org.matsim.core.utils.gis.ShapeFileReader;
+import org.matsim.pt.transitSchedule.api.TransitSchedule;
+import org.matsim.pt.transitSchedule.api.TransitScheduleFactory;
+import org.opengis.feature.simple.SimpleFeature;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 public class RunPlanCase1 {
 
     private static final String CONFIG = "scenarios/berlin-v5.5-10pct/input/berlin-v5.5-10pct.config.xml";
-    private static final String OUTPUT = "output/plan_case_1/";
-
-    private static final List<Id<Link>> carFreeLinks = List.of(
-            Id.createLinkId(""),
-            Id.createLinkId(""));
+    private static final String OUTPUT = "output/base_case/";
 
     public static void main(String[] args) {
 
         Config config = ConfigUtils.loadConfig(CONFIG);
         prepareConfig(config);
         config.controler().setOutputDirectory(OUTPUT);
-        config.controler().setRunId("car_free_1");
 
         Scenario scenario = ScenarioUtils.loadScenario(config);
-        prepareScenario(scenario, carFreeLinks);
 
         Controler controler = new Controler(scenario);
         controler.run();
@@ -66,18 +60,46 @@ public class RunPlanCase1 {
         config.qsim().setUsePersonIdForMissingVehicleId(false);
     }
 
-    private static void prepareScenario(Scenario scenario, List<Id<Link>> carfree){
+    private static void prepareScenario(Scenario scenario){
 
-        Network network = scenario.getNetwork();
-        Map<Id<Link>, ? extends Link> links = network.getLinks();
+        scenario.getNetwork().getLinks().values().stream()
+                .forEach(link -> {
+                    link.getId();
+                });
+    }
 
-        Attributes attributes = network.getAttributes();
+    private static void prepareTransitSchedule(TransitSchedule schedule){
+        var lines = schedule.getTransitLines().values().stream()
+                .filter(transitLine -> transitLine.getId().toString().contains("U2"))
+                .collect(Collectors.toList());
 
-        List<String> forbiddenModes = List.of(TransportMode.car, TransportMode.ride);
+        for(var line: lines){
+            var routes = line.getRoutes().values();
 
-        for(var id: carfree){
-            Link link = links.get(id);
-            link.getAllowedModes().removeAll(forbiddenModes);
+        }
+
+    }
+
+    private static void getNewTransitStops(String shapeFilePath, TransitScheduleFactory factory){
+
+        var featuers = ShapeFileReader.getAllFeatures(shapeFilePath).stream().collect(Collectors.toList());
+        Collections.sort(featuers, new FeatureComparator());
+
+        for(var f: featuers){
+
+
+        }
+    }
+
+    private static class FeatureComparator implements Comparator<SimpleFeature>{
+
+
+        @Override
+        public int compare(SimpleFeature o1, SimpleFeature o2) {
+            Integer int1 = Integer.parseInt(o1.getAttribute("order").toString());
+            Integer int2 = Integer.parseInt(o2.getAttribute("order").toString());
+
+            return int1.compareTo(int2);
         }
     }
 }
